@@ -17,14 +17,9 @@ class Scraper(object):
 
     def search(self):
         url = self.args['link']
-        url = url.replace(" ", "+")
-        url = url.replace('"AND"', "&")
-        url = url.replace("[]", "")
-        url = "http://libgen.li/" + url
         if url == None:
             if self.args['search_in'] == "LibGen (Sci-Tech)":
                 query = self.args['query']
-                query = query.replace(" ", "+")
                 if len(query) < 2:
                     return {"error":"404 Query must be at least 2 characters."}, 404
 
@@ -37,7 +32,13 @@ class Scraper(object):
             
                 url = f"http://libgen.rs/search.php?req={query}&lg_topic=libgen&open=0&view=simple&res=100&phrase={mask}&column={column}"
 
+        else:
+            url = url.replace('"AND"', "&")
+            url = url.replace("[]", "")
+            url = "http://libgen.li/" + url
+        
         self.source = requests.get(url)
+        print(url, file=sys.stderr)
         return self.searchScrape()
 
 
@@ -59,13 +60,13 @@ class Scraper(object):
         }
     '''
     def searchScrape(self):
-        soup = BeautifulSoup(self.source.text, 'html.parser')
+        soup = BeautifulSoup(self.source.content, 'html.parser')
         table = soup.find_all("tr", recursive=True)
         result = {}
         for tr in table:
             td = tr.find_all("td")
-            if len(td) <= 15 and len(td) >= 12:
-                return str(td)
+            print(len(td), file=sys.stderr)
+            if len(td) == 15 or len(td) == 16:
                 bookId = td[0].text
                 result[bookId] = {}
                 thisBook = result[bookId]
@@ -89,7 +90,7 @@ class Scraper(object):
                     except TypeError:
                         pass
                 thisBook["mirrors"] = mirrors
-
+        print(result, file=sys.stderr)
         return result, 200
 
 
