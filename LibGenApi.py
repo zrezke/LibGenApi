@@ -18,7 +18,7 @@ class Scraper(object):
     def search(self):
         url = self.args['link']
         if url == None:
-            if self.args['search_in'] == "LibGen (Sci-Tech)":
+            if self.args['search_in'] == "LibGen(Sci-Tech)":
                 query = self.args['query']
                 if len(query) < 2:
                     return {"error":"404 Query must be at least 2 characters."}, 404
@@ -36,9 +36,10 @@ class Scraper(object):
             url = url.replace('"AND"', "&")
             url = url.replace("[]", "")
             url = "http://libgen.li/" + url
+
+        print(url, file=sys.stderr)
         
         self.source = requests.get(url)
-        print(url, file=sys.stderr)
         return self.searchScrape()
 
 
@@ -54,7 +55,7 @@ class Scraper(object):
                 "pages": "xxx",
                 "language": "Language",
                 "size": "500Kb",
-                "extension": "rar",
+                "fileType": "rar",
                 "mirrors": ["linktoMiror", "linkToMirror" ...]
             },
         }
@@ -65,7 +66,6 @@ class Scraper(object):
         result = {}
         for tr in table:
             td = tr.find_all("td")
-            print(len(td), file=sys.stderr)
             if len(td) == 15 or len(td) == 16:
                 bookId = td[0].text
                 result[bookId] = {}
@@ -81,7 +81,7 @@ class Scraper(object):
                 thisBook["pages"] = td[5].text
                 thisBook["language"] = td[6].text
                 thisBook["size"] = td[7].text
-                thisBook["extension"] = td[8].text
+                thisBook["fileType"] = td[8].text
                 mirrors = []
                 for element in td[9:14]:
                     try:
@@ -90,12 +90,11 @@ class Scraper(object):
                     except TypeError:
                         pass
                 thisBook["mirrors"] = mirrors
-        print(result, file=sys.stderr)
         return result, 200
 
 
         
-class SearchLibGen(Resource, Scraper):
+class SearchLibGenApi(Resource, Scraper):
     def __init__(self):
         super().__init__(Scraper)
 
@@ -121,8 +120,8 @@ class SearchLibGen(Resource, Scraper):
 
 
 
-api.add_resource(SearchLibGen, '/searchLibGen')
+api.add_resource(SearchLibGenApi, '/searchLibGen')
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    app.run(debug=True, host='0.0.0.0')
