@@ -13,11 +13,14 @@ api = Api(app)
 class Scraper(object):
     def __init__(self, args):
         self.args = args
-        url = ""
 
     def search(self):
         url = self.args['link']
         if url == None:
+            #  Default to "LibGen(sci-Tech)"
+            if self.args["search_in"] == None:
+                self.args["search_in"] = "LibGen(Sci-Tech)"
+
             if self.args['search_in'] == "LibGen(Sci-Tech)":
                 query = self.args['query']
                 if len(query) < 2:
@@ -37,13 +40,12 @@ class Scraper(object):
             url = url.replace("[]", "")
             url = "http://libgen.li/" + url
 
-        print(url, file=sys.stderr)
-        
         self.source = requests.get(url)
         return self.searchScrape()
 
 
     #  searchScrape()
+    #  SCRAPES SITE AND RETURNS THE FIRST n ELEMENTS (as JSON) where n<=100
     '''
         Returns this:
         {
@@ -92,8 +94,47 @@ class Scraper(object):
                 thisBook["mirrors"] = mirrors
         return result, 200
 
+    # SCRAPE MIRROR SITE RETURN DOWNLOAD LINK
+    def download(self, mirror):
+        mirror = mirror.replace("AND", "&")
+        response = requests.get(mirror)
+        soup = BeautifulSoup(response.content, "html.parser")
+        h2 = soup.find("h2", recursive=True)
+        a = h2.find("a")
+        link = a["href"]
+        
+        return link, 200
+
 
         
+#  HOW TO USE ==> LibGenApi
+'''
+    Make an http request to api server like this:
+        <link of server>/searchLibGen?/
+        after this put in your arguments:
+        Required argument is 'type'
+        set it to either 'search' or 'download' like this:
+            <link of server>/searchLibGen?/type=download
+
+        Args:
+        -------------------------------------------------------
+        "type=search" has one required argument:
+            'query' = search query (min. 2chars) 
+            not required args:
+                'search_in' = Defaults to LibGen(Sci-Tech)
+                'search_with_mask' = Search with mask filter
+                'search_in_fields' = Search in fields filter
+                'link' = Pass in search result link directly
+        
+                              For link argument
+        !!! REPLACE "&" IN LINKS WITH "AND" OR YOU WILL GET AN ERROR!!!
+        -------------------------------------------------------
+        "type=download" has one required argument:
+            'mirror' = Link of mirror site
+
+        Seperate arguments with
+
+'''
 class SearchLibGenApi(Resource, Scraper):
     def __init__(self):
         super().__init__(Scraper)
@@ -103,14 +144,25 @@ class SearchLibGenApi(Resource, Scraper):
         parser.add_argument('type', required=True)
         self.args = parser.parse_args()
         if self.args['type'] == "search":
+            #  Search query string
             parser.add_argument('query', required=True)
-            parser.add_argument('search_in', required=True)
+            #  "Search in" filter defaults to LibGen(Sci-Tech)
+            parser.add_argument('search_in', required=False)
+            #  "Search with mask" search filter
             parser.add_argument('search_with_mask', required=False)
+            #  Search in fields filter
             parser.add_argument('search_in_fields', required=False)
-            #  When Adding links use "AND" instead of &!!!!!
+            #  Pass in a link of a LibGen search result
+            #  When Adding links use "AND" instead of & inside of the link!!!!!
             parser.add_argument('link', required=False)
             self.args = parser.parse_args()
             return self.search()
+        
+        if self.args['type'] == "download":
+            parser.add_argument("mirror", required=True)
+            self.args = parser.parse_args()
+            print(self.args, file=sys.stderr)
+            return self.download(self.args["mirror"])
 
     def post(self):
         return ("404 This API doesn't have post support.", 404)
